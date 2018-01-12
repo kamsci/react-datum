@@ -10,4 +10,6 @@ module.exports = class WholeNumber extends Number
   @displayName: "react-datum.WholeNumber"
 
   charactersMustMatch: /^\-?[0-9]*$/
-  
+
+  getInputValue: ->
+  	return parseInt(@state.value, 10)

@@ -48,7 +48,7 @@ module.exports = class CollectionPicker extends Datum
     displayAttr: React.PropTypes.string
     
     #  attribute value from model in lookup collection to set as value on props.attr
-    #  in props.model
+    #  in props.model. If not specified, displayAttr is used
     optionSaveAttr: React.PropTypes.string.isRequired
 
     # react component to render when in inputMode='readonly'. 
@@ -81,11 +81,12 @@ module.exports = class CollectionPicker extends Datum
     #  
     #  *Where do they all come from?*  
     #  
-    #  We will use the returned filtered set of models from the following chain (in order):
+    #  We will use the returned filtered set of models from the first of following chain (in order) 
+    #  to exist:
+    #    **props.asyncSuggestionCallback** - this prop
     #    **Collection.filterForPicker()**  - if we find a method on the collection called 
     #      'filterForPicker' - it will be called with `(userInput, doneCallback, asyncOptions)`
     #      and should return an array of models to render suggestions from 
-    #    **props.asyncSuggestionCallback** - this prop
     #    **Internal filter** (this.filterOptions(userInput, doneCallback)) seaches through the 
     #      props.optionDisplayAttr of models currently in the collection to find suggestions based on 
     #      userInput and groups results
@@ -105,6 +106,9 @@ module.exports = class CollectionPicker extends Datum
     #  value of our @props.model.get(@props.attr) returns the IDs either as an
     #  array or comma separated value.  
     multi: React.PropTypes.bool
+    
+    # Ignored unless multi==true, display value as comma separated values instead of tags when inputMode='readonly'
+    csvDisplay: React.PropTypes.bool
 
     # editPlaceholder will be useful in inlineEdit mode when you want to display a 
     # placeholder text which is different from the placeholder which you display before the select editor is displayed
@@ -137,6 +141,10 @@ module.exports = class CollectionPicker extends Datum
   selectRef: "reactSelect"
 
 
+  constructor: ->
+    super
+    
+
   initializeState: ->
     @state = {
       value: @getModelValue()
@@ -151,14 +159,23 @@ module.exports = class CollectionPicker extends Datum
   #override - if multi, returns an array of values that renderEllipsizeValue wraps in spans
   renderValueForDisplay: ->
     collection = @getCollection() 
-    return if @props.multi
-      modelValues = @getModelValue()
+    modelValues = @getModelValue()
+    # A CSV model value return is also accepted.
+    # TODO : consider expanding this to include non numeric 
+    if _.isString(modelValues) and modelValues.match(/\d+\,\s*\d+/)
+      modelValues = modelValues.split(/\,\s?/)
+      
+    modelValues = [modelValues] unless _.isArray modelValues
+    modelValues = _.compact(_.unique(_.flatten(modelValues)))
+    if @props.csvDisplay
+      collectionValues = modelValues.map (modelId) => 
+        @getCollectionModelDisplayValue(modelId, collection) ? modelId
+      @renderEllipsizedValue(collectionValues.join(', ')) 
+    else
       modelValues.map (modelValue) =>
         @renderCollectionDisplayValue(modelValue, collection)
-    else
-      @renderCollectionDisplayValue(@getModelValue(), collection)
-    
-
+  
+  
   renderCollectionDisplayValue: (modelId, collection=@getCollection()) ->
     modelValue = @getCollectionModelDisplayValue(modelId, collection)
     modelValue = @renderEllipsizedValue(modelValue) if modelValue
@@ -182,24 +199,48 @@ module.exports = class CollectionPicker extends Datum
     if @props.synchronousLoading
       <Select {... @getSelectOptions()}/>
     else
-      <Select.Async {... @getSelectAsyncOptions()}/>
+      <Select.Async {... @getSelectAsyncOptions()}>
+        {
+          (props) => 
+            collection = @getCollection()
+            # if the user provided a filter method don't allow react-select to filter
+            props.filterOptions = null if collection.filterForPicker? || @props.asyncLoadCallback? 
+            # prevent react-select from blanking the value while the user types
+            props.value = @getValueForInput()  
+            props.ref = 'select'
+            return <Select {... props}/>
+        }
+      </Select.Async>
 
 
   getCollection: ->
     collection = @props.collection || @context.collection
-    throw new Error(@constructor.displayName + " requires a collection prop or context") unless collection?
+    console.warn(@constructor.displayName + " requires a collection prop or context. attr=#{@props.attr}") unless collection?
     unless collection instanceof Backbone.Collection
       return new Backbone.Collection(collection)
     
     return collection
   
-
+  ###
+    TODO: make this method public.  useful for extensions and used by some
+  ###
   _getCollectionModelById: (modelOrId) ->
     if _.isNumber(modelOrId) or _.isString(modelOrId)
-      model = @getCollection()?.get(modelOrId, add: @props.fetchUnknownModelsInCollection)
-    else
-      model = modelOrId    
+      collectionModel = @getCollection()?.get modelOrId, add: @props.fetchUnknownModelsInCollection
+      onSync = =>
+        _.defer => @_onFirstCollectionModelSync(collectionModel)
+        collectionModel?.off?('sync', onSync)
+        
+      collectionModel?.on?('sync', onSync)
+      return collectionModel
+      
+    return modelOrId
+    
   
+  _onFirstCollectionModelSync: (collectionModel) =>
+    @getModel()?.trigger?('invalidate')
+    @forceUpdate()
+    
   
   getCollectionModelDisplayValue: (modelId, collection) ->
     return null unless modelId 
@@ -241,6 +282,8 @@ module.exports = class CollectionPicker extends Datum
         else 
           [modelValue]
       
+      modelValue = _.compact(_.unique(_.flatten(modelValue)))
+    
     return modelValue
 
 
@@ -248,7 +291,7 @@ module.exports = class CollectionPicker extends Datum
     collection = @getCollection()
     return _.extend {}, @props,
       placeholder: @props.editPlaceholder || @getPropOrMetadata('placeholder') || @renderPlaceholder()
-      value: @state.value
+      value: @getValueForInput()
       onChange: @onChange
       onBlur: @onBlur
       options: @getOptionValuesForReactSelect(collection.models)
@@ -259,7 +302,11 @@ module.exports = class CollectionPicker extends Datum
 
   getSelectAsyncOptions: () ->
     collection = @getCollection()
-    return _.extend @getSelectOptions(),
+    selectOptions = @getSelectOptions()
+    if @props.asyncSuggestionCallback?
+      delete selectOptions.options
+      
+    return _.extend selectOptions,
       loadOptions: @onLoadOptions
 
 
@@ -281,13 +328,6 @@ module.exports = class CollectionPicker extends Datum
 
 
   getOptionValuesForReactSelect: (models = []) =>
-    if @props.multi
-      selectedModels = @getSelectedModels() ? []
-      for model in selectedModels 
-        # add any selectedModels that are not already in models
-        foundModel = _.find(models, (m) => @getOptionSaveValue(m) == @getOptionSaveValue(model))
-        models.push model unless foundModel? 
-          
     return _.map models, (m) => return {
       label: @getCollectionModelDisplayValue(m) 
       value: @getOptionSaveValue(m)
@@ -305,6 +345,11 @@ module.exports = class CollectionPicker extends Datum
   onChange: (optionsSelected) =>
     if @props.multi
       values = _.pluck(optionsSelected, 'value')
+      # this works around an issue in react-select where when searching with already
+      # selected values react-select would blank out the selections and leave with nothing
+      if values.length == 1 && @state.value?.length > 0 && values[0] not in @state.value
+        values = @state.value.concat values
+        optionsSelected = @getOptionValuesForReactSelect(@getSelectedModels())
       values = values.join(',') if @props.setAsString
       super values, propsOnChangeValue: optionsSelected
     else
@@ -316,6 +361,7 @@ module.exports = class CollectionPicker extends Datum
   # async callback for react-select      
   onLoadOptions: (userInput, callback) =>
     collection = @getCollection()
+    selectedModels = _.compact(@getSelectedModels() ? [])
     
     # TODO : consider debouncing in here 
     # we may be debounce in the filtering methods below or they may take longer than 
@@ -328,12 +374,15 @@ module.exports = class CollectionPicker extends Datum
         models = error
         error = false
       models = @groupSuggestionModels(userInput, models)
+      if @props.multi
+        models = models.concat(selectedModels) 
+        collection.add selectedModels   # make sure they are still in the collection too
       optionsForReactSelect = @getOptionValuesForReactSelect(models)
       @lastAsyncCallback(null, {options: optionsForReactSelect})
   
     switch
-      when collection.filterForPicker? then collection.filterForPicker(userInput, chainedCallback, @props.asyncOptions)
-      when @props.asyncSuggestionCallback? then @props.asyncSuggestionCallback(collection, userInput, chainedCallback, @props.asyncOptions)
+      when @props.asyncSuggestionCallback? then @props.asyncSuggestionCallback.call(@, collection, userInput, chainedCallback, @props.asyncOptions)
+      when collection.filterForPicker? then collection.filterForPicker.call(@, userInput, chainedCallback, @props.asyncOptions)
       else @filterSuggestionModels(collection, userInput, chainedCallback, @props.asyncOptions)
     
     return null   # ReactSelect Async expects this to be a promise or null
@@ -343,7 +392,8 @@ module.exports = class CollectionPicker extends Datum
   filterSuggestionModels: (collection, userInput, callback) =>
     # filter to just those with match anywhere
     filteredModels = _.filter collection.models, (model) => 
-      Strhelp.weaklyHas(@getCollectionModelDisplayValue(model), userInput)
+      displayValue = @getCollectionModelDisplayValue(model)
+      displayValue? && Strhelp.weaklyHas(displayValue, userInput)
 
     # sort all by display value alpha, case insensitive
     filteredModels = filteredModels.sort (a, b) =>

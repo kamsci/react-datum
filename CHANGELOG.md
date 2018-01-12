@@ -1,4 +1,54 @@
 
+## [0.14.6](https://github.com/zulily/react-datum.git/compare/0.14.5...0.14.6) (2017-07-16)
+
+
+### Bugs Fixed in this Release
+* [a169b08](https://github.com/zulily/react-datum.git/commit/a169b081c93045c4ab769bb805de4e7c57ffdbfa)  should not stack when collection picker collection model is missing display value. + move react deps to dev
+
+## [0.14.5](https://github.com/zulily/react-datum.git/compare/0.14.4...0.14.5) (2017-07-13)
+
+
+### Other Commits
+* [59d5442](https://github.com/zulily/react-datum.git/commit/59d544268436307dd1cf545027258b4daafe55f6) fix regression bug in last commmit. LazyPhoto should call super on componentWillMount
+
+## [0.14.4](https://github.com/zulily/react-datum.git/compare/0.14.3...0.14.4) (2017-07-13)
+
+
+### Bugs Fixed in this Release
+* [f726368](https://github.com/zulily/react-datum.git/commit/f7263689d04708ad44b970a62c52290adc435924)  fix LazyPhoto sporatically fails to load image in React 16.
+
+### Other Commits
+* [94d3812](https://github.com/zulily/react-datum.git/commit/94d3812ef6d92842b72f25b313ce613776e8940c) upgrade peer dependencies to reflect current known working peer versions
+
+## [0.14.3](https://github.com/zulily/react-datum.git/compare/0.14.2...0.14.3) (2017-07-12)
+
+
+### Other Commits
+* [4088b88](https://github.com/zulily/react-datum.git/commit/4088b8822277ac70c946ed806ba4b5a8bc7cbc35) use proper es export syntax :/ so webpack doesnt get confused and add each component class to the global space
+
+## [0.14.2](https://github.com/zulily/react-datum.git/compare/0.14.1...0.14.2) (2017-06-18)
+
+
+### Other Commits
+* [6ab030e](https://github.com/zulily/react-datum.git/commit/6ab030e8aa4ddca66dca9e27670fb16c19d65951) upgrade selectable-collection to 0.3.1
+
+## [0.14.1](https://github.com/zulily/react-datum.git/compare/0.14.0...0.14.1) (2017-06-18)
+
+
+### Other Commits
+* [47d0113](https://github.com/zulily/react-datum.git/commit/47d0113a94175d494b8fdfd2415035b0294669da) add .npmignore
+
+## [0.14.0](https://github.com/zulily/react-datum.git/compare/0.13.1...0.14.0) (2017-06-18)
+In addition to the few new features, this version of react-datum includes better support for UMD and commonjs usage without any additional transpile required!
+
+### New Features
+* [5a794a0](https://github.com/zulily/react-datum.git/commit/5a794a053af9efdfa3fdea0252f9b639d3686de2)  add displayModelValue prop to CollectionPicker
+
+### Other Commits
+* [afa43e6](https://github.com/zulily/react-datum.git/commit/afa43e6d2f81a55be7a44691d2b7d4907ec5a04b) Merge pull request #4 from jkarlovich/feature/linkUpdate
+* [aa45b2c](https://github.com/zulily/react-datum.git/commit/aa45b2c40a4debd231b9ae5e4fc022b2e271481e) made an option to hide the protocol in the link datum by passing a prop of true to hideProtocol, wrote a test to test it
+* [89eba68](https://github.com/zulily/react-datum.git/commit/89eba680389c745b4c5fc69bee5fbf8652a032f1) changed hideProtocol as a prop
+
 ## [0.13.1](https://github.com/zulily/react-datum.git/compare/0.13.0...0.13.1) (2017-04-15)
 Minor feature improvements and bug fixes.
 

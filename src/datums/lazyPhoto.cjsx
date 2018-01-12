@@ -22,27 +22,25 @@ module.exports = class LazyPhoto extends Datum
 
   subClassName: 'lazy-image'
 
-  # these are updated as events are fired
-  notFound: false
   initialLoadComplete: false
   
+  
+  componentWillMount: () ->
+    super
+    @setState notFound: false
+    
+  
   isEditable: -> false
+  
   
   # override
   renderForDisplay: () ->
     modelValue = @getModelValue()
-    if !modelValue || modelValue != @lastModelValue
-      @notFound = @initialLoadComplete = !(modelValue?.length > 0)
-      @lastModelValue = modelValue
-
+    notFound = if !modelValue? then true else @state.notFound
     notFoundUrl = Options.get('LazyPhoto').notFoundUrl 
-    loadingUrl = Options.get('LazyPhoto').loadingUrl 
-      
-    source = switch
-      when @notFound then notFoundUrl
-      when @initialLoadComplete then modelValue
-      else loadingUrl
-
+    source = if notFound then notFoundUrl else modelValue
+    
+    # console.log "LazyPhoto rendering: src=#{source} this=", this
     <img src={source}
          onLoad={@onLoad}
          onError={@onError}
@@ -50,14 +48,18 @@ module.exports = class LazyPhoto extends Datum
 
 
   onLoad: (evt) =>
-    return if @initialLoadComplete
+    return if @initialLoadComplete || @notFound
     # TODO : should this be state?
     @initialLoadComplete = true
-    @forceUpdate()
 
 
   onError: (evt) =>
-    return unless @initialLoadComplete # ignore error on initial load of blank image
-    return if @notFound   # of if already noted
-    @notFound = true
-    @forceUpdate()
+    return if @state.notFound   
+    @setState notFound: true
+    
+    
+  onModelValueChange: () ->
+    # force img tag to retry and find file
+    @setState notFound: false
+    super
+

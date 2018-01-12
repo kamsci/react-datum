@@ -25,6 +25,9 @@ module.exports = class Text extends Datum
     ])
     # If we want the ellipsis to be like ...Long Name we need to make this true
     reverseEllipsis: React.PropTypes.bool
+    
+    # when displaying array values, only show unique
+    uniqueArrayMembers: React.PropTypes.bool
 
 
   @defaultProps: _.extend {}, Datum.defaultProps,
@@ -43,8 +46,11 @@ module.exports = class Text extends Datum
   renderValueForDisplay: ->
     superValue = super
     value = switch
-      when _.isArray(superValue) then superValue.join(', ')
-      when _.isObject(superValue ) then JSON.stringify(superValue)
+      when _.isArray(superValue) 
+        values = _.compact(_.flatten(superValue))
+        values = _.unique(values) if @props.uniqueArrayMembers
+        values.join(', ')
+      when _.isObject(superValue) then JSON.stringify(superValue)
       else superValue.toString()
     
     @renderEllipsizedValue value

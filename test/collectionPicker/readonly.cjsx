@@ -142,9 +142,13 @@ describe 'CollectionPicker inputMode=readonly as multi select', ->
 
 describe 'CollectionPicker inputMode=readonly without a collection', ->
   model = new Backbone.Model({nameIds: [11, 22]})
-  it 'should throw an error', ->
-    fn = -> Th.render <CollectionPicker attr='nameIds' displayAttr='name' multi model={model}/>
-    expect(fn).to.throw(Error)
+  
+  # TODO : we should probably add test and feature that the component at least displays the model attr value
+  
+  ## We don't throw an error any more; just a console warning. 
+  # it 'should throw an error', ->
+  #   fn = -> Th.render <CollectionPicker attr='nameIds' displayAttr='name' multi model={model}/>
+  #   expect(fn).to.throw(Error)
     
     
 describe 'CollectionPicker inputMode=readonly without a displayAttr or model.toString', ->

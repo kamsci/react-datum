@@ -9,6 +9,7 @@ LazyPhoto = require('../src/datums/lazyPhoto')
 Options = require '../src/options'
 
 TEST_IMG_URL = 'https://drpem3xzef3kf.cloudfront.net/photos/pets/32707403/1/?bust=1436666804&width=200&no_scale_up=1'
+BOGUS_TEST_IMAGE_URL = 'http://bogusSite/bogusImage.jpg'
 LOADING_URL = Options.get('LazyPhoto').loadingUrl
 NOT_FOUND_URL = Options.get('LazyPhoto').notFoundUrl
 
@@ -32,27 +33,19 @@ describe 'LazyPhoto datum', ->
     it 'should have rendered an image', ->
       $component.find('img').length.should.eq 1
       
-    it 'should initially have a src attribute of Options.LazyPhoto.loadingUrl', ->
-      $component.find('img').attr('src').should.eq LOADING_URL
-      
-    it 'should load image post render', () ->
+    it 'should load test image', () ->
       # jsDOM doesn't load images so the initial image will never load, fake it
       component.onLoad()  
       $component.find('img').attr('src').should.eq TEST_IMG_URL
       
-    it 'when model attr changed to bogus image url, initially load loadingUrl and then notFoundUrl', ->
-      $component.find('img').attr('src').should.eq LOADING_URL
-      component.onLoad()  
-      $component.find('img').attr('src').should.eq TEST_IMG_URL
-      
-      model.set imgUrl: 'http://bogusSite/bogusImage.jpg'
+    it 'when model attr changed to bogus image url, should show image from notFoundUrl',  ->
+      $component.find('img').attr('src').should.eq TEST_IMG_URL, 'expected to initially have TEST_IMG_URL'
+      model.set imgUrl: BOGUS_TEST_IMAGE_URL
       component.forceUpdate()
-      $component.find('img').attr('src').should.eq LOADING_URL, "should have reset the src to #{LOADING_URL}"
-      
+      $component.find('img').attr('src').should.eq BOGUS_TEST_IMAGE_URL, 'expected the bogus url before .onError() called' 
       # jsDOM doesn't load images so the initial image will never get loaded or get an error, fake it
-      component.onLoad()  
       component.onError()
-      $component.find('img').attr('src').should.eq NOT_FOUND_URL
+      $component.find('img').attr('src').should.eq NOT_FOUND_URL, 'expected not found url after .onError() called'
       
 
   describe 'when rendered without an imageUrl', ->
@@ -60,11 +53,10 @@ describe 'LazyPhoto datum', ->
       model = new Backbone.Model
         name: 'fluffy'
       component = Th.render <LazyPhoto attr='imgUrl' model={model}/>
-      component.onLoad()
       $component = $(Th.domNode(component))
     
     it 'should have rendered an image with Options.LazyPhoto.notFoundUrl', ->
-      $component.find('img').length.should.eq 1
+      $component.find('img').length.should.eq 1, 'expected to find an img tag'
       $component.find('img').attr('src').should.eq NOT_FOUND_URL
     
     
@@ -76,7 +68,6 @@ describe 'LazyPhoto datum', ->
     
     it 'should have rendered an image with Options.LazyPhoto.notFoundUrl', ->
       component = Th.render <LazyPhoto attr='imgUrl' model={model}/>
-      component.onLoad()
       component.onError()
       
       $component = $(Th.domNode(component))
@@ -95,8 +86,6 @@ describe 'LazyPhoto datum', ->
       component = Th.render <LazyPhoto attr='imgUrl' model={model}/>
       $component = $(Th.domNode(component))
 
-      $component.find('img').attr('src').should.eq newLoadingUrl
-      component.onLoad()
       component.onError()
       $component.find('img').attr('src').should.eq newNotFoundUrl
       

@@ -113,6 +113,10 @@ module.exports = class Datum extends React.Component
     # editable state
     value: React.PropTypes.node
     
+    # set stateless:true to have the input and display always reflect the `value` prop or model value. 
+    # Combined with value to make any datum a fully controlled component
+    stateless: React.PropTypes.bool
+    
     
   @defaultProps:
     # no default for inputMode because we can also get from context, see @getInputMode()
@@ -495,14 +499,26 @@ module.exports = class Datum extends React.Component
   ###
   getValueForInput: () ->
     #console.log "Datum::getValueForInput", @state.value, @getModelValue(), JSON.stringify({value: @state.value})
-    return if @state.value? then @state.value else @getModelValue()
+    return if !@props.stateless && @state.value != undefined then @state.value else @getModelValue()
     
     
   ###
-    this method returns the value in the input as seen by user
+    DEPRECATED (use getValueForInput): this method returns the value in the input as seen by user
   ###
   getInputValue: () ->
     return @state.value
+    
+    
+  ###
+    Extend this method to change how to get the input element's value from a 
+    change event.   The base class impl get's the value from event.target.value
+    by default.
+  ###
+  getValueFromInput: (event) ->
+    # NOTE: don't assume that event arg contains anything more than
+    #     target.value.  Some wrapped components like react-select don't
+    #     provide the synth event on change 
+    return event?.target?.value ? event?.value ? event
     
     
   ###
@@ -519,7 +535,7 @@ module.exports = class Datum extends React.Component
   ###
   getModelValue: (newProps = @props, newContext = @context)->
     if newProps.value != undefined
-      return  @state.shadowValue || newProps.value
+      return  @state?.shadowValue ? newProps.value
       
     return null unless model = @getModel(newProps, newContext)
     
@@ -545,7 +561,7 @@ module.exports = class Datum extends React.Component
 
 
   ###
-    Extend this model to interpret the value prior to saving for example a Percent datum
+    Extend this method to interpret the value prior to saving for example a Percent datum
     that the user enters a value that is 100x what gets saved to model
     
     options pass through to model.set() 
@@ -660,7 +676,7 @@ module.exports = class Datum extends React.Component
     # NOTE: don't assume that event arg contains anything more than
     #     target.value.  Some wrapped components like react-select don't
     #     provide the synth event on change 
-    value = if event?.target?.value? then event?.target?.value else event
+    value = @getValueFromInput(event) 
     
     @setValue(value, setModelValue: @shouldSetOnChange())
       
@@ -703,6 +719,16 @@ module.exports = class Datum extends React.Component
       _.delay => 
         @setState saved: null
       , @props.savedIndicatorTimeout
+      
+      
+  ###
+    Extend this method to run code when the model value change is detected
+    when props are changed 
+  ###
+  onModelValueChange: (oldModelValue, newModelValue) ->
+    @setState({
+      value: newModelValue
+    })
 
 
   onDocumentClick: (evt) =>
