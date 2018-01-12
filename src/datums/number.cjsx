@@ -254,7 +254,9 @@ module.exports = class Number extends Datum
     return value
     
     
-  
+  getInputValue: ->
+    if isNaN(parseFloat(@state.value)) then return null
+    return parseFloat(@state.value)
 
     
   
